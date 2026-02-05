@@ -647,7 +647,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pyrenew-hew"
+name = "pyrenew-multisignal"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
@@ -673,7 +673,7 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "jax", specifier = "<0.8.2" },
+    { name = "jax" },
     { name = "numpy" },
     { name = "numpyro" },
     { name = "polars", specifier = ">=1.36" },

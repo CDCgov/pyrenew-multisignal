@@ -1,30 +1,22 @@
 [project]
-name = "pyrenew-hew"
+name = "pyrenew-multisignal"
 version = "0.1.0"
 description = "Models for forecasting COVID-19 and Flu hospitalizations using multiple data sources with PyRenew"
 readme = "README.md"
-requires-python = ">=3.13"
 authors = [
-  {name = "Damon Bayer", email = "xum8@cdc.gov"},
-  {name = "Dylan H. Morris"},
-  {name = "Subekshya Bidari"},
+    { name = "sbidari", email = "zib2@cdc.gov" },
+    {name = "Damon Bayer", email = "xum8@cdc.gov"},
+    {name = "Dylan H. Morris"},
 ]
-
+requires-python = ">=3.13"
 dependencies = [
     "pyrenew",
     "polars>=1.36",
-    "jax<0.8.2",
+    "jax",
     "scipy",
     "numpy",
     "numpyro",
 ]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.metadata]
-allow-direct-references = true
 
 [dependency-groups]
 dev = [
@@ -44,6 +36,10 @@ select = ["I", "E4", "E7", "E9", "F", "UP"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.uv.sources]
 pyrenew = { git = "https://github.com/CDCgov/PyRenew", rev = "v0.1.6" }
