@@ -14,6 +14,9 @@ dependencies = [
     "pyrenew",
     "polars>=1.36",
     "jax<0.8.2",
+    "scipy",
+    "numpy",
+    "numpyro",
 ]
 
 [build-system]

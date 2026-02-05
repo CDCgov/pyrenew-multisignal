@@ -652,8 +652,11 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "jax" },
+    { name = "numpy" },
+    { name = "numpyro" },
     { name = "polars" },
     { name = "pyrenew" },
+    { name = "scipy" },
 ]
 
 [package.dev-dependencies]
@@ -671,8 +674,11 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "jax", specifier = "<0.8.2" },
+    { name = "numpy" },
+    { name = "numpyro" },
     { name = "polars", specifier = ">=1.36" },
     { name = "pyrenew", git = "https://github.com/CDCgov/PyRenew?rev=v0.1.6" },
+    { name = "scipy" },
 ]
 
 [package.metadata.requires-dev]
