@@ -1,5 +1,7 @@
 # PyRenew-multisignal
 
+[![pyrenew-multisignal](https://codecov.io/gh/CDCgov/pyrenew-multisignal/branch/main/graph/badge.svg)](https://codecov.io/gh/CDCgov/pyrenew-multisignal)
+
 This repository contains code for the PyRenew-HEW model which generates short-term forecasts of respiratory disease burden using the PyRenew library and several data sources:
 - **H**ospital Admissions from the [National Healthcare Safety Network](https://www.cdc.gov/nhsn/index.html)
 - **E**mergency Department Visits from the [National Syndromic Surveillance Program](https://www.cdc.gov/nssp/index.html)
