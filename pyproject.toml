@@ -1,7 +1,7 @@
 [project]
 name = "pyrenew-multisignal"
 version = "0.1.0"
-description = "Models for forecasting COVID-19 and Flu hospitalizations using multiple data sources with PyRenew"
+description = "Models for forecasting respiratory disease hospitalizations using multiple data sources with PyRenew"
 readme = "README.md"
 authors = [
     { name = "sbidari", email = "zib2@cdc.gov" },
