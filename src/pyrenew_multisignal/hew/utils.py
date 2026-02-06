@@ -12,7 +12,7 @@ from jax.typing import ArrayLike
 from pyrenew.deterministic import DeterministicPMF
 from scipy.optimize import minimize
 
-from pyrenew_multisignal.pyrenew_hew_model import (
+from pyrenew_multisignal.hew.model import (
     EDVisitObservationProcess,
     HospAdmitObservationProcess,
     LatentInfectionProcess,
@@ -20,7 +20,7 @@ from pyrenew_multisignal.pyrenew_hew_model import (
     PyrenewHEWModel,
     WastewaterObservationProcess,
 )
-from pyrenew_multisignal.pyrenew_hew_param import PyrenewHEWParam
+from pyrenew_multisignal.hew.param import PyrenewHEWParam
 
 
 def approx_lognorm(

@@ -3,7 +3,7 @@ import json
 import pytest
 from jax.typing import ArrayLike
 
-from pyrenew_multisignal.pyrenew_hew_param import PyrenewHEWParam
+from pyrenew_multisignal.hew import PyrenewHEWParam
 
 
 @pytest.fixture

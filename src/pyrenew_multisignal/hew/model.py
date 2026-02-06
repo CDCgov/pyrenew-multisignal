@@ -26,7 +26,7 @@ from pyrenew.process import ARProcess, DifferencedProcess
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 from pyrenew.time import daily_to_mmwr_epiweekly
 
-from pyrenew_multisignal.pyrenew_hew_data import PyrenewHEWData
+from pyrenew_multisignal.hew.data import PyrenewHEWData
 
 
 class OffsetDiscretizedLognormalPMF(RandomVariable):

@@ -5,7 +5,7 @@ import numpy as np
 import polars as pl
 import pytest
 
-from pyrenew_multisignal.pyrenew_hew_data import PyrenewHEWData
+from pyrenew_multisignal.hew import PyrenewHEWData
 
 
 @pytest.mark.parametrize(
