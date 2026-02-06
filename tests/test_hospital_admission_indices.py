@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 import pytest
 
-from pyrenew_hew.pyrenew_hew_model import HospAdmitObservationProcess
+from pyrenew_multisignal.pyrenew_hew_model import HospAdmitObservationProcess
 
 
 @pytest.mark.parametrize(

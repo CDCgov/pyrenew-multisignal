@@ -12,7 +12,7 @@ from pyrenew.math import r_approx_from_R
 from pyrenew.process import ARProcess, DifferencedProcess
 from pyrenew.randomvariable import DistributionalVariable
 
-from pyrenew_hew.pyrenew_hew_model import LatentInfectionProcess
+from pyrenew_multisignal.pyrenew_hew_model import LatentInfectionProcess
 
 
 def test_LatentInfectionProcess():

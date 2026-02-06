@@ -2,7 +2,7 @@ from collections.abc import Iterable
 
 import pytest
 
-from pyrenew_hew.utils import (
+from pyrenew_multisignal.utils import (
     flags_from_hew_letters,
     flags_from_pyrenew_model_name,
     hew_letters_from_flags,
