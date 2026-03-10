@@ -1,6 +1,7 @@
 # numpydoc ignore=GL08
 import datetime as dt
 from functools import partial
+from typing import NamedTuple
 
 import jax
 import jax.numpy as jnp
@@ -116,6 +117,243 @@ class OffsetDiscretizedLognormalPMF(RandomVariable):
 
     def size(self):
         return self.n
+
+
+class InfectionsSuspDepletionSample(NamedTuple):
+    """
+    A container for holding the output from the InfectionsWithSusceptibleDepletion.
+
+    Attributes
+    ----------
+    post_initialization_infections
+        The estimated latent infections. Defaults to None.
+    rt
+        The adjusted reproduction number. Defaults to None.
+    """
+
+    post_initialization_infections: ArrayLike | None = None
+    rt: ArrayLike | None = None
+
+    def __repr__(self) -> str:
+        return f"InfectionsSample(post_initialization_infections={self.post_initialization_infections}, rt={self.rt})"
+
+
+class InfectionsWithSusceptibleDepletion(RandomVariable):
+    r"""
+    Latent infections
+
+    This class computes infections, given Rt, initial infections,
+    initial susceptible population, and generation interval.
+
+    Parameters
+    ----------
+    name
+        A name for this random variable.
+
+    Notes
+    -----
+    This function implements the following renewal process with susceptible depletion:
+
+    ```math
+    I(t) & = S(t) \left( 1 - \exp\left(\frac{- \mathcal{R}(t) \lambda(t)}{S(t)} \right) \right)
+
+    \lambda(t) & = \sum_{\tau=1}^{T_g}I(t - \tau)g(\tau)
+    S(t) & = \max\left(1, S_0 - \sum_{\tau=1}^{t-1} I(\tau)\right)
+    ```
+
+    where $\mathcal{R}(t)$ is the reproductive number, $g(t)$
+    is the generation interval PMF, $T_g$ is the max-length of the
+    generation interval, and $S_0$ is the initial susceptible population.
+    """
+
+    def __init__(
+        self,
+        name: str,
+    ) -> None:
+        """
+        Default constructor for InfectionsWithSusceptibleDepletion class.
+
+        Parameters
+        ----------
+        name
+            A name for this random variable.
+        """
+        super().__init__(name=name)
+
+    @staticmethod
+    def validate() -> None:  # numpydoc ignore=GL08
+        return None
+
+    @staticmethod
+    def compute_infections_with_susceptible_depletion(
+        I0: ArrayLike,
+        Rt_raw: ArrayLike,
+        reversed_generation_interval_pmf: ArrayLike,
+        S0: ArrayLike,
+        population: ArrayLike,
+    ) -> tuple:
+        """
+        Generate infections according to a
+        renewal process with susceptible depletion
+        as in `Bhatt et al 2023
+        <https://doi.org/10.1093/jrsssa/qnad030>`_.
+
+        Parameters
+        ----------
+        I0
+            Array of initial infections of the
+            same length as the generation interval
+            pmf vector.
+        Rt_raw
+            Timeseries of raw $\\mathcal{R}(t)$ values
+            before adjustment to reflect current susceptible population.
+        reversed_generation_interval_pmf
+            discrete probability mass vector
+            representing the generation interval
+            of the infection process, where the final
+            entry represents an infection 1 time unit in the
+            past, the second-to-last entry represents
+            an infection two time units in the past, etc.
+        S0
+            Initial susceptible population.
+        population
+            Total population size.
+
+        Returns
+        -------
+        tuple
+            A tuple ``(infections, Rt_adjusted, S_latest)``,
+            where `infections` is the incident infection timeseries,
+            `Rt_adjusted` is the susceptible-depletion-adjusted
+            timeseries of the effective reproduction number $\\mathcal{R}(t)$,
+            and `S_latest` is the latest susceptible population.
+
+        Notes
+        -----
+        This function implements the following renewal process with susceptible depletion:
+
+        ```math
+        I(t) & = S(t) \\left( 1 - \\exp\\left(\\frac{- \\mathcal{R}(t) \\lambda(t)}{S(t)} \\right) \\right)
+
+        \\lambda(t) & = \\sum_{\\tau=1}^{T_g}I(t - \\tau)g(\\tau)
+        S(t) & = \\max\\left(1, S_0 - \\sum_{\\tau=1}^{t-1} I(\\tau)\\right)
+        ```
+
+        where $\\mathcal{R}(t)$ is the reproductive number, $g(t)$
+        is the generation interval PMF, $T_g$ is the max-length of the
+        generation interval, and $S_0$ is the initial susceptible population.
+        """
+
+        def _scanner(
+            carry: tuple[float, ArrayLike], Rt_t: float
+        ) -> tuple[
+            tuple[float, ArrayLike], tuple[float, float]
+        ]:  # numpydoc ignore=GL08
+            S_t, infection_history = carry
+
+            infectiousness = jnp.einsum(
+                "i...,i...->...", reversed_generation_interval_pmf, infection_history
+            )
+
+            I_t = S_t * (-jnp.expm1(-(Rt_t * infectiousness) / population))
+
+            Rt_adj_t = jnp.where(infectiousness > 0, I_t / infectiousness, 0.0)
+
+            S_next = jnp.maximum(1.0, S_t - I_t)
+
+            history_next = jnp.concatenate(
+                [infection_history[1:], I_t[jnp.newaxis]], axis=0
+            )
+
+            return (S_next, history_next), (I_t, Rt_adj_t)
+
+        (S_latest, _), (infections, Rt_adjusted) = jax.lax.scan(
+            _scanner, (S0, I0), Rt_raw
+        )
+        return infections, Rt_adjusted, S_latest
+
+    def sample(
+        self,
+        Rt: ArrayLike,
+        I0: ArrayLike,
+        gen_int: ArrayLike,
+        S0: ArrayLike,
+        population: ArrayLike,
+        **kwargs: object,
+    ) -> InfectionsSuspDepletionSample:
+        """
+        Samples infections given Rt, initial infections, and generation
+        interval.
+
+        Parameters
+        ----------
+        Rt
+            Reproduction number.
+        I0
+            Initial infections, as an array
+            at least as long as the generation
+            interval PMF.
+        gen_int
+            Generation interval PMF.
+        S0
+            Initial susceptible population.
+        population
+            Total population size.
+        **kwargs
+            Additional keyword arguments passed through to internal
+            sample calls, should there be any.
+
+        Returns
+        -------
+        InfectionsSuspDepletionSample
+            Named tuple with "infections".
+        """
+        if I0.shape[0] < gen_int.size:
+            raise ValueError(
+                "Initial infections must be at least as long as the "
+                f"generation interval. Got initial infections length {I0.shape[0]}"
+                f"and generation interval length {gen_int.size}."
+            )
+
+        if I0.shape[1:] != Rt.shape[1:]:
+            raise ValueError(
+                "Initial infections and Rt must have the same batch shapes. "
+                f"Got initial infections of batch shape {I0.shape[1:]} "
+                f"and Rt of batch shape {Rt.shape[1:]}."
+            )
+
+        if jnp.shape(S0) != Rt.shape[1:]:
+            raise ValueError(
+                "S0 must match Rt batch shape exactly. "
+                f"Got S0 shape {jnp.shape(S0)} and Rt batch shape {Rt.shape[1:]}."
+            )
+
+        if jnp.shape(population) != Rt.shape[1:]:
+            raise ValueError(
+                "population must match Rt batch shape exactly. "
+                f"Got population shape {jnp.shape(population)} and Rt batch shape {Rt.shape[1:]}."
+            )
+
+        gen_int_rev = jnp.flip(gen_int)
+
+        I0 = I0[-gen_int_rev.size :]
+
+        (
+            post_initialization_infections,
+            Rt_adj,
+            _,
+        ) = self.compute_infections_with_susceptible_depletion(
+            I0=I0,
+            Rt_raw=Rt,
+            reversed_generation_interval_pmf=gen_int_rev,
+            S0=S0,
+            population=population,
+        )
+
+        return InfectionsSuspDepletionSample(
+            post_initialization_infections=post_initialization_infections,
+            rt=Rt_adj,
+        )
 
 
 class LatentInfectionProcess(RandomVariable):

@@ -2,6 +2,7 @@ from pyrenew_multisignal.hew.data import PyrenewHEWData
 from pyrenew_multisignal.hew.model import (
     EDVisitObservationProcess,
     HospAdmitObservationProcess,
+    InfectionsWithSusceptibleDepletion,
     LatentInfectionProcess,
     OffsetDiscretizedLognormalPMF,
     PyrenewHEWModel,
@@ -38,4 +39,5 @@ __all__ = [
     "powerset",
     "pyrenew_model_name_from_flags",
     "validate_hew_letters",
+    "InfectionsWithSusceptibleDepletion",
 ]
