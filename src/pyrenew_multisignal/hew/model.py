@@ -138,12 +138,14 @@ class LatentInfectionProcess(RandomVariable):
         n_newton_steps: int = 4,
     ) -> None:
         self.inf_with_feedback_proc = InfectionsWithFeedback(
+            "infections_with_feedback",
             infection_feedback_strength=infection_feedback_strength_rv,
             infection_feedback_pmf=infection_feedback_pmf_rv,
         )
 
         self.ar_diff = DifferencedProcess(
-            fundamental_process=ARProcess(),
+            "ar_diff",
+            fundamental_process=ARProcess("ar"),
             differencing_order=1,
         )
 
