@@ -142,7 +142,7 @@ class InfectionsWithSusceptibleDepletion(RandomVariable):
     r"""
     Latent infections
 
-    This class computes infections, given Rt, initial infections,
+    This class computes infections, given $\mathcal{R}(t)$, initial infections,
     initial susceptible population, and generation interval.
 
     Parameters
