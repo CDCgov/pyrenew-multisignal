@@ -222,11 +222,10 @@ class InfectionsWithSusceptibleDepletion(RandomVariable):
         Returns
         -------
         tuple
-            A tuple ``(infections, Rt_adjusted, S_latest)``,
-            where `infections` is the incident infection timeseries,
-            `Rt_adjusted` is the susceptible-depletion-adjusted
-            timeseries of the effective reproduction number $\mathcal{R}(t)$,
-            and `S_latest` is the latest susceptible population.
+            A tuple ``(infections, Rt_adjusted)``,
+            where `infections` is the incident infection timeseries
+            and `Rt_adjusted` is the susceptible-depletion-adjusted
+            timeseries of the effective reproduction number $\mathcal{R}(t)$.
 
         Notes
         -----
@@ -259,7 +258,7 @@ class InfectionsWithSusceptibleDepletion(RandomVariable):
 
             Rt_adj_t = jnp.where(infectiousness > 0, I_t / infectiousness, 0.0)
 
-            S_next = jnp.maximum(1.0, S_t - I_t)
+            S_next = jnp.clip(S_t - I_t, min=0)
 
             history_next = jnp.concatenate(
                 [infection_history[1:], I_t[jnp.newaxis]], axis=0
@@ -267,10 +266,8 @@ class InfectionsWithSusceptibleDepletion(RandomVariable):
 
             return (S_next, history_next), (I_t, Rt_adj_t)
 
-        (S_latest, _), (infections, Rt_adjusted) = jax.lax.scan(
-            _scanner, (S0, I0), Rt_raw
-        )
-        return infections, Rt_adjusted, S_latest
+        _, (infections, Rt_adjusted) = jax.lax.scan(_scanner, (S0, I0), Rt_raw)
+        return infections, Rt_adjusted
 
     def sample(
         self,
@@ -341,7 +338,6 @@ class InfectionsWithSusceptibleDepletion(RandomVariable):
         (
             post_initialization_infections,
             Rt_adj,
-            _,
         ) = self.compute_infections_with_susceptible_depletion(
             I0=I0,
             Rt_raw=Rt,

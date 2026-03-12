@@ -138,7 +138,6 @@ def test_compute_infections_with_susceptible_depletion(I0, gen_int, Rt_raw, S0):
     (
         infs_sus_depletion,
         Rt_adj,
-        Susceptible_pop,
     ) = compute_infections_with_susceptible_depletion(I0, Rt_raw, gen_int, S0, S0)
 
     assert jnp.allclose(
@@ -149,7 +148,7 @@ def test_compute_infections_with_susceptible_depletion(I0, gen_int, Rt_raw, S0):
 
     assert jnp.allclose(Rt_adj, Rt_raw, rtol=1e-4)
 
-    assert jnp.allclose(jnp.sum(infs_sus_depletion, axis=0) + Susceptible_pop, S0)
+    assert jnp.all(jnp.sum(infs_sus_depletion, axis=0) <= S0)
 
     return None
 
@@ -177,13 +176,12 @@ def test_compute_infections_with_susceptible_depletion_zero_rt(S0):
     gen_int = jnp.ones(4) / 4
     Rt_raw = jnp.zeros(10)
 
-    infections, Rt_adjusted, Susceptible_pop = (
-        compute_infections_with_susceptible_depletion(I0, Rt_raw, gen_int, S0, S0)
+    infections, Rt_adjusted = compute_infections_with_susceptible_depletion(
+        I0, Rt_raw, gen_int, S0, S0
     )
 
     assert jnp.allclose(infections, jnp.zeros_like(Rt_raw))
     assert jnp.allclose(Rt_adjusted, jnp.zeros_like(Rt_raw))
-    assert jnp.allclose(Susceptible_pop, S0)
 
     return None
 
@@ -207,7 +205,7 @@ def test_compute_infections_with_susceptible_depletion_small_S0(S0, pop):
     gen_int = jnp.ones(4) / 4
     Rt_raw = jnp.ones(10)
 
-    infections, _, _ = compute_infections_with_susceptible_depletion(
+    infections, _ = compute_infections_with_susceptible_depletion(
         I0, Rt_raw, gen_int, S0, pop
     )
 
