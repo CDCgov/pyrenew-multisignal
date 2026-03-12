@@ -205,7 +205,7 @@ class InfectionsWithSusceptibleDepletion(RandomVariable):
             same length as the generation interval
             pmf vector.
         Rt_raw
-            Timeseries of raw $\\mathcal{R}(t)$ values
+            Timeseries of raw $\mathcal{R}(t)$ values
             before adjustment to reflect current susceptible population.
         reversed_generation_interval_pmf
             discrete probability mass vector
@@ -225,7 +225,7 @@ class InfectionsWithSusceptibleDepletion(RandomVariable):
             A tuple ``(infections, Rt_adjusted, S_latest)``,
             where `infections` is the incident infection timeseries,
             `Rt_adjusted` is the susceptible-depletion-adjusted
-            timeseries of the effective reproduction number $\\mathcal{R}(t)$,
+            timeseries of the effective reproduction number $\mathcal{R}(t)$,
             and `S_latest` is the latest susceptible population.
 
         Notes
@@ -233,13 +233,13 @@ class InfectionsWithSusceptibleDepletion(RandomVariable):
         This function implements the following renewal process with susceptible depletion:
 
         ```math
-        I(t) & = S(t) \\left( 1 - \\exp\\left(\\frac{- \\mathcal{R}(t) \\lambda(t)}{S(t)} \\right) \\right)
+        I(t) & = S(t) \left( 1 - \exp\left(\frac{- \mathcal{R}(t) \lambda(t)}{S(t)} \right) \right)
 
-        \\lambda(t) & = \\sum_{\\tau=1}^{T_g}I(t - \\tau)g(\\tau)
-        S(t) & = \\max\\left(1, S_0 - \\sum_{\\tau=1}^{t-1} I(\\tau)\\right)
+        \lambda(t) & = \sum_{\tau=1}^{T_g}I(t - \tau)g(\tau)
+        S(t) & = \max\left(1, S_0 - \sum_{\tau=1}^{t-1} I(\tau)\right)
         ```
 
-        where $\\mathcal{R}(t)$ is the reproductive number, $g(t)$
+        where $\mathcal{R}(t)$ is the reproductive number, $g(t)$
         is the generation interval PMF, $T_g$ is the max-length of the
         generation interval, and $S_0$ is the initial susceptible population.
         """
