@@ -84,7 +84,27 @@ def test_infections_with_sus_depletion(I0, gen_int, Rt, pop, S0):
     assert jnp.allclose(res.rt, res_bf["rt"])
 
 
-def test_infections_with_sus_depletion_invalid_input_shape():
+@pytest.mark.parametrize(
+    "S0,population,error_match",
+    [
+        (
+            jnp.array([10], dtype=float),
+            jnp.array([10, 10]),
+            "S0 must match Rt batch shape exactly",
+        ),
+        (
+            jnp.array([10, 10], dtype=float),
+            jnp.array([10]),
+            "population must match Rt batch shape exactly",
+        ),
+        (
+            jnp.array([10, 10], dtype=float),
+            jnp.array([5, 10]),
+            "Susceptible cannot be greater than population",
+        ),
+    ],
+)
+def test_infections_with_sus_depletion_invalid_inputs(S0, population, error_match):
     """
     Test the InfectionsWithSusceptibleDepletion class cannot
     be sampled when Rt, S0, and population have invalid input shapes
@@ -92,23 +112,18 @@ def test_infections_with_sus_depletion_invalid_input_shape():
     I0 = jnp.array([[5.0, 0.2]])
     gen_int = jnp.ones(1)
     Rt = jnp.ones((5, 2))
-    pop = jnp.array([10, 10])
-    S0 = jnp.array([10, 10], dtype=float)
 
     Inf_w_sus_depletion = InfectionsWithSusceptibleDepletion(
         name="test_inf_sus_depletion"
     )
 
-    with pytest.raises(ValueError, match="S0 must match Rt batch shape exactly"):
+    with pytest.raises(ValueError, match=error_match):
         Inf_w_sus_depletion.sample(
-            Rt=Rt, I0=I0, gen_int=gen_int, S0=jnp.array([10]), population=pop
-        )
-
-    with pytest.raises(
-        ValueError, match="population must match Rt batch shape exactly"
-    ):
-        Inf_w_sus_depletion.sample(
-            Rt=Rt, I0=I0, gen_int=gen_int, S0=S0, population=jnp.array([10])
+            Rt=Rt,
+            I0=I0,
+            gen_int=gen_int,
+            S0=S0,
+            population=population,
         )
 
 

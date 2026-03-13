@@ -328,7 +328,15 @@ class InfectionsWithSusceptibleDepletion(RandomVariable):
         if jnp.shape(population) != Rt.shape[1:]:
             raise ValueError(
                 "population must match Rt batch shape exactly. "
-                f"Got population shape {jnp.shape(population)} and Rt batch shape {Rt.shape[1:]}."
+                f"Got population shape {jnp.shape(population)} and "
+                f"Rt batch shape {Rt.shape[1:]}."
+            )
+
+        if jnp.any(S0 > population):
+            raise ValueError(
+                "Susceptible cannot be greater than population. "
+                f"Got initial susceptible {S0} and "
+                f"population {population}."
             )
 
         gen_int_rev = jnp.flip(gen_int)
