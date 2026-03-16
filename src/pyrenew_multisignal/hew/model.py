@@ -486,7 +486,7 @@ class LatentInfectionProcess(RandomVariable):
                 ]
             )
 
-            rtu_subpop_ar_proc = ARProcess()
+            rtu_subpop_ar_proc = ARProcess("rtu_subpop_ar")
             rtu_subpop_ar_weekly = rtu_subpop_ar_proc(
                 noise_name="rtu_ar_proc",
                 n=n_weeks_rt,
@@ -581,7 +581,7 @@ class EDVisitObservationProcess(RandomVariable):
         ed_neg_bin_concentration_rv: RandomVariable,
         ed_right_truncation_pmf_rv: RandomVariable,
     ) -> None:
-        self.p_ed_ar_proc = ARProcess()
+        self.p_ed_ar_proc = ARProcess("p_ed_ar")
         self.p_ed_mean_rv = p_ed_mean_rv
         self.p_ed_w_sd_rv = p_ed_w_sd_rv
         self.autoreg_p_ed_rv = autoreg_p_ed_rv
