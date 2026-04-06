@@ -13,20 +13,20 @@ repos:
 #####
 # Python
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.15.5
+  rev: v0.15.9
   hooks:
     # lint
     - id: ruff-check
     # format
     - id: ruff-format
 - repo: https://github.com/astral-sh/uv-pre-commit
-  rev: 0.10.9
+  rev: 0.11.3
   hooks:
     - id: uv-lock
 #####
 # Bash
 - repo: https://github.com/scop/pre-commit-shfmt
-  rev: v3.12.0-2
+  rev: v3.13.0-1
   hooks:
     - id: shfmt
 #####
