@@ -17,7 +17,6 @@ from pyrenew.convolve import compute_delay_ascertained_incidence
 from pyrenew.deterministic import DeterministicVariable
 from pyrenew.latent import (
     InfectionInitializationProcess,
-    InfectionsWithFeedback,
     InitializeInfectionsExponentialGrowth,
 )
 from pyrenew.math import r_approx_from_R
@@ -158,7 +157,7 @@ class InfectionsWithSusceptibleDepletion(RandomVariable):
     I(t) & = S(t) \left( 1 - \exp\left(\frac{- \mathcal{R}(t) \lambda(t)}{S(t)} \right) \right)
 
     \lambda(t) & = \sum_{\tau=1}^{T_g}I(t - \tau)g(\tau)
-    S(t) & = \max\left(1, S_0 - \sum_{\tau=1}^{t-1} I(\tau)\right)
+    S(t) & = \max\left(0, S_0 - \sum_{\tau=1}^{t-1} I(\tau)\right)
     ```
 
     where $\mathcal{R}(t)$ is the reproductive number, $g(t)$
@@ -235,7 +234,7 @@ class InfectionsWithSusceptibleDepletion(RandomVariable):
         I(t) & = S(t) \left( 1 - \exp\left(\frac{- \mathcal{R}(t) \lambda(t)}{S(t)} \right) \right)
 
         \lambda(t) & = \sum_{\tau=1}^{T_g}I(t - \tau)g(\tau)
-        S(t) & = \max\left(1, S_0 - \sum_{\tau=1}^{t-1} I(\tau)\right)
+        S(t) & = \max\left(0, S_0 - \sum_{\tau=1}^{t-1} I(\tau)\right)
         ```
 
         where $\mathcal{R}(t)$ is the reproductive number, $g(t)$
@@ -332,13 +331,6 @@ class InfectionsWithSusceptibleDepletion(RandomVariable):
                 f"Rt batch shape {Rt.shape[1:]}."
             )
 
-        if jnp.any(S0 > population):
-            raise ValueError(
-                "Susceptible cannot be greater than population. "
-                f"Got initial susceptible {S0} and "
-                f"population {population}."
-            )
-
         gen_int_rev = jnp.flip(gen_int)
 
         I0 = I0[-gen_int_rev.size :]
@@ -364,12 +356,11 @@ class LatentInfectionProcess(RandomVariable):
     def __init__(
         self,
         i0_first_obs_n_rv: RandomVariable,
+        s0_rv: RandomVariable,
         log_r_mu_intercept_rv: RandomVariable,
         autoreg_rt_rv: RandomVariable,  # ar coeff for AR(1) on R'(t)
         eta_sd_rv: RandomVariable,  # sd of random walk for AR(1) on R'(t)
         generation_interval_pmf_rv: RandomVariable,
-        infection_feedback_strength_rv: RandomVariable,
-        infection_feedback_pmf_rv: RandomVariable,
         n_initialization_points: int,
         pop_fraction: ArrayLike = jnp.array([1]),
         autoreg_rt_subpop_rv: RandomVariable = None,
@@ -379,10 +370,8 @@ class LatentInfectionProcess(RandomVariable):
         offset_ref_log_rt_rv: RandomVariable = None,
         n_newton_steps: int = 4,
     ) -> None:
-        self.inf_with_feedback_proc = InfectionsWithFeedback(
-            "infections_with_feedback",
-            infection_feedback_strength=infection_feedback_strength_rv,
-            infection_feedback_pmf=infection_feedback_pmf_rv,
+        self.inf_with_susceptible_dep = InfectionsWithSusceptibleDepletion(
+            "infections_with_susceptible_dep",
         )
 
         self.ar_diff = DifferencedProcess(
@@ -395,8 +384,8 @@ class LatentInfectionProcess(RandomVariable):
         self.autoreg_rt_rv = autoreg_rt_rv
         self.eta_sd_rv = eta_sd_rv
         self.generation_interval_pmf_rv = generation_interval_pmf_rv
-        self.infection_feedback_pmf_rv = infection_feedback_pmf_rv
         self.i0_first_obs_n_rv = i0_first_obs_n_rv
+        self.s0_rv = s0_rv
         self.offset_ref_logit_i_first_obs_rv = offset_ref_logit_i_first_obs_rv
         self.offset_ref_log_rt_rv = offset_ref_log_rt_rv
         self.autoreg_rt_subpop_rv = autoreg_rt_subpop_rv
@@ -541,17 +530,19 @@ class LatentInfectionProcess(RandomVariable):
         )
 
         i0 = infection_initialization_process()
-
-        inf_with_feedback_proc_sample = self.inf_with_feedback_proc(
+        S0 = self.s0_rv()  # use numpyro plate for subpops specific S0
+        inf_with_susceptible_dep_sample = self.inf_with_susceptible_dep(
             Rt=rtu_subpop,
             I0=i0,
             gen_int=generation_interval_pmf,
+            S0=S0,
+            population=jnp.squeeze(self.pop_fraction),
         )
 
         latent_infections_subpop = jnp.concat(
             [
                 i0,
-                inf_with_feedback_proc_sample.post_initialization_infections,
+                inf_with_susceptible_dep_sample.post_initialization_infections,
             ]
         )
 
@@ -564,7 +555,7 @@ class LatentInfectionProcess(RandomVariable):
             )
         assert latent_infections.size == self.n_initialization_points + n_days_post_init
         numpyro.deterministic("rtu_subpop", rtu_subpop)
-        numpyro.deterministic("rt", inf_with_feedback_proc_sample.rt)
+        numpyro.deterministic("rt", inf_with_susceptible_dep_sample.rt)
         numpyro.deterministic("latent_infections", latent_infections)
 
         return latent_infections, latent_infections_subpop

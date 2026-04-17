@@ -386,12 +386,11 @@ def build_pyrenew_hew_model(
 
     latent_infections_rv = LatentInfectionProcess(
         i0_first_obs_n_rv=priors["i0_first_obs_n_rv"],
+        s0_rv=priors["s0_rv"],
         log_r_mu_intercept_rv=priors["log_r_mu_intercept_rv"],
         autoreg_rt_rv=priors["autoreg_rt_rv"],
         eta_sd_rv=priors["eta_sd_rv"],  # sd of random walk for ar process,
         generation_interval_pmf_rv=generation_interval_pmf_rv,
-        infection_feedback_strength_rv=priors["inf_feedback_strength_rv"],
-        infection_feedback_pmf_rv=infection_feedback_pmf_rv,
         n_initialization_points=n_initialization_points,
         pop_fraction=params.pop_fraction,
         autoreg_rt_subpop_rv=priors["autoreg_rt_subpop_rv"],
