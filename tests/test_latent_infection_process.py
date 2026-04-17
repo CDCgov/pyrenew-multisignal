@@ -5,14 +5,16 @@ from pyrenew.arrayutils import repeat_until_n
 from pyrenew.deterministic import DeterministicVariable
 from pyrenew.latent import (
     InfectionInitializationProcess,
-    InfectionsWithFeedback,
     InitializeInfectionsExponentialGrowth,
 )
 from pyrenew.math import r_approx_from_R
 from pyrenew.process import ARProcess, DifferencedProcess
 from pyrenew.randomvariable import DistributionalVariable
 
-from pyrenew_multisignal.hew import LatentInfectionProcess
+from pyrenew_multisignal.hew import (
+    InfectionsWithSusceptibleDepletion,
+    LatentInfectionProcess,
+)
 
 
 def test_LatentInfectionProcess():
@@ -22,6 +24,7 @@ def test_LatentInfectionProcess():
     without the hierarchical component are equivalent.
     """
     i0_first_obs_n_rv = DeterministicVariable("i0_first_obs_n_rv", 1e-6)
+    s0_rv = DeterministicVariable("s0", 1.0)
     log_r_mu_intercept_rv = DeterministicVariable("log_r_mu_intercept", 0.08)
     eta_sd_rv = DeterministicVariable("eta_sd", 0)
     autoreg_rt_rv = DeterministicVariable("autoreg_rt", 0.4)
@@ -36,21 +39,16 @@ def test_LatentInfectionProcess():
             n_newton_steps=4,
         ),
     )
-    infection_feedback_pmf_rv = DeterministicVariable(
-        "infection_feedback_pmf", jnp.array([0.25, 0.25, 0.25, 0.25])
-    )
-    infection_feedback_strength_rv = DeterministicVariable("inf_feedback", -2)
     n_initialization_points = 10
     n_days_post_init = 14
 
     my_latent_infection_model = LatentInfectionProcess(
         i0_first_obs_n_rv=i0_first_obs_n_rv,
+        s0_rv=s0_rv,
         log_r_mu_intercept_rv=log_r_mu_intercept_rv,
         autoreg_rt_rv=autoreg_rt_rv,
         eta_sd_rv=eta_sd_rv,  # sd of random walk for ar process,
         generation_interval_pmf_rv=generation_interval_pmf_rv,
-        infection_feedback_pmf_rv=infection_feedback_pmf_rv,
-        infection_feedback_strength_rv=infection_feedback_strength_rv,
         n_initialization_points=n_initialization_points,
     )
 
@@ -68,10 +66,8 @@ def test_LatentInfectionProcess():
             ),
         )()
 
-        inf_with_feedback_proc = InfectionsWithFeedback(
-            "infections_with_feedback",
-            infection_feedback_strength=infection_feedback_strength_rv,
-            infection_feedback_pmf=infection_feedback_pmf_rv,
+        inf_with_susceptible_dep_proc = InfectionsWithSusceptibleDepletion(
+            "infections_with_susceptible_dep"
         )
 
         ar_diff = DifferencedProcess(
@@ -99,16 +95,18 @@ def test_LatentInfectionProcess():
             offset=0,
             period_size=7,
         )
-        inf_with_feedback_proc_sample = inf_with_feedback_proc(
+        inf_with_susceptible_dep_proc_sample = inf_with_susceptible_dep_proc(
             Rt=rtu,
             I0=i0,
             gen_int=generation_interval_pmf_rv(),
+            S0=s0_rv(),
+            population=jnp.array(1.0),
         )
 
     latent_inf_wo_hierarchical_effects = jnp.concat(
         [
             i0,
-            inf_with_feedback_proc_sample.post_initialization_infections,
+            inf_with_susceptible_dep_proc_sample.post_initialization_infections,
         ]
     )
 
