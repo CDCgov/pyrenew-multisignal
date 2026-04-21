@@ -42,10 +42,6 @@ NUM_CHAINS = 2
 COVERAGE_THRESHOLD = 0.80
 MCMC_SEED = 123
 
-_TRUE_PARAMS = load_synthetic_true_parameters()
-_TRUE_DAILY_INFECTIONS = load_synthetic_daily_infections()
-TRUE_POPULATION = _TRUE_PARAMS["population"]
-
 
 def _build_nssp_data() -> pl.DataFrame:
     """Reshape synthetic daily ED visit data to the schema expected by PyrenewHEWData."""
@@ -85,12 +81,22 @@ def _build_nhsn_data() -> pl.DataFrame:
 
 
 @pytest.fixture(scope="module")
-def training_data() -> PyrenewHEWData:
+def true_params():
+    return load_synthetic_true_parameters()
+
+
+@pytest.fixture(scope="module")
+def true_daily_infections():
+    return load_synthetic_daily_infections()
+
+
+@pytest.fixture(scope="module")
+def training_data(true_params) -> PyrenewHEWData:
     """PyrenewHEWData built from the pyrenew synthetic datasets."""
     return PyrenewHEWData(
         nssp_training_data=_build_nssp_data(),
         nhsn_training_data=_build_nhsn_data(),
-        population_size=TRUE_POPULATION,
+        population_size=true_params["population"],
         right_truncation_offset=None,
     )
 
@@ -127,9 +133,9 @@ def idata(fitted_model):
 
 
 @pytest.fixture(scope="module")
-def true_rt():
+def true_rt(true_daily_infections):
     """Extract true R(t) trajectory from synthetic infections data."""
-    return _TRUE_DAILY_INFECTIONS["true_rt"].to_numpy()
+    return true_daily_infections["true_rt"].to_numpy()
 
 
 @pytest.mark.integration
