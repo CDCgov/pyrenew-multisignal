@@ -23,7 +23,8 @@ def test_LatentInfectionProcess():
     the hierarchical construct and manual construction
     without the hierarchical component are equivalent.
     """
-    i0_first_obs_n_rv = DeterministicVariable("i0_first_obs_n_rv", 1e-6)
+    e_first_obs_n_rv = DeterministicVariable("e_first_obs_n_rv", 1e-6)
+    iedr_rv = DeterministicVariable("iedr_rv", 1e-5)
     s0_rv = DeterministicVariable("s0", 1.0)
     log_r_mu_intercept_rv = DeterministicVariable("log_r_mu_intercept", 0.08)
     eta_sd_rv = DeterministicVariable("eta_sd", 0)
@@ -43,7 +44,8 @@ def test_LatentInfectionProcess():
     n_days_post_init = 14
 
     my_latent_infection_model = LatentInfectionProcess(
-        i0_first_obs_n_rv=i0_first_obs_n_rv,
+        e_first_obs_n_rv=e_first_obs_n_rv,
+        iedr_rv=iedr_rv,
         s0_rv=s0_rv,
         log_r_mu_intercept_rv=log_r_mu_intercept_rv,
         autoreg_rt_rv=autoreg_rt_rv,
@@ -53,14 +55,17 @@ def test_LatentInfectionProcess():
     )
 
     with numpyro.handlers.seed(rng_seed=223):
-        latent_inf_w_hierarchical_effects, _ = my_latent_infection_model(
+        latent_inf_w_hierarchical_effects, _, iedr, _ = my_latent_infection_model(
             n_days_post_init=n_days_post_init
         )
+
+        e_first_obs_n = e_first_obs_n_rv()
+        i0_first_obs_n = e_first_obs_n / iedr
 
         # Calculate latent infections without hierarchical dynamics
         i0 = InfectionInitializationProcess(
             "I0_initialization",
-            i0_first_obs_n_rv,
+            DeterministicVariable("i0_first_obs_n", i0_first_obs_n),
             InitializeInfectionsExponentialGrowth(
                 n_initialization_points, initialization_rate_rv, t_pre_init=0
             ),

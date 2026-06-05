@@ -355,7 +355,6 @@ class InfectionsWithSusceptibleDepletion(RandomVariable):
 class LatentInfectionProcess(RandomVariable):
     def __init__(
         self,
-        i0_first_obs_n_rv: RandomVariable,
         s0_rv: RandomVariable,
         log_r_mu_intercept_rv: RandomVariable,
         autoreg_rt_rv: RandomVariable,  # ar coeff for AR(1) on R'(t)
@@ -369,6 +368,11 @@ class LatentInfectionProcess(RandomVariable):
         offset_ref_logit_i_first_obs_rv: RandomVariable = None,
         offset_ref_log_rt_rv: RandomVariable = None,
         n_newton_steps: int = 4,
+        iedr_rv: RandomVariable = None,
+        ihr_rv: RandomVariable = None,
+        ihr_rel_iedr_rv: RandomVariable = None,
+        e_first_obs_n_rv: RandomVariable = None,
+        h_first_obs_n_rv: RandomVariable = None,
     ) -> None:
         self.inf_with_susceptible_dep = InfectionsWithSusceptibleDepletion(
             "infections_with_susceptible_dep",
@@ -384,7 +388,6 @@ class LatentInfectionProcess(RandomVariable):
         self.autoreg_rt_rv = autoreg_rt_rv
         self.eta_sd_rv = eta_sd_rv
         self.generation_interval_pmf_rv = generation_interval_pmf_rv
-        self.i0_first_obs_n_rv = i0_first_obs_n_rv
         self.s0_rv = s0_rv
         self.offset_ref_logit_i_first_obs_rv = offset_ref_logit_i_first_obs_rv
         self.offset_ref_log_rt_rv = offset_ref_log_rt_rv
@@ -395,6 +398,11 @@ class LatentInfectionProcess(RandomVariable):
         self.pop_fraction = pop_fraction
         self.n_subpops = len(pop_fraction)
         self.n_newton_steps = n_newton_steps
+        self.iedr_rv = iedr_rv
+        self.ihr_rv = ihr_rv
+        self.ihr_rel_iedr_rv = ihr_rel_iedr_rv
+        self.e_first_obs_n_rv = e_first_obs_n_rv
+        self.h_first_obs_n_rv = h_first_obs_n_rv
 
     def validate(self):
         pass
@@ -409,6 +417,61 @@ class LatentInfectionProcess(RandomVariable):
             Number of days of infections to sample, not including
             the initialization period.
         """
+
+        iedr = None
+        ihr = None
+
+        if self.iedr_rv is not None:
+            iedr = self.iedr_rv()
+            numpyro.deterministic("iedr", iedr)
+            if self.ihr_rv is not None:
+                raise ValueError(
+                    "When `iedr_rv` is provided, `ihr` must be specified "
+                    "relative to IEDR via `ihr_rel_iedr_rv`. "
+                )
+            if self.ihr_rel_iedr_rv is not None:
+                ihr = iedr * self.ihr_rel_iedr_rv()
+                numpyro.deterministic("ihr", ihr)
+        elif self.ihr_rv is not None:
+            if self.ihr_rel_iedr_rv is not None:
+                raise ValueError(
+                    "IHR must either be specified "
+                    "in absolute terms by a non-None "
+                    "`ihr_rv` or specified relative "
+                    "to the IEDR by a non-None "
+                    "`ihr_rel_iedr_rv`, but not both. "
+                    "Got non-None RVs for both "
+                    "quantities"
+                )
+            ihr = self.ihr_rv()
+            numpyro.deterministic("ihr", ihr)
+        else:
+            raise ValueError(
+                "Must provide at least one of `iedr_rv` or `ihr_rv`. "
+                "Got neither (both were None)."
+            )
+
+        if self.e_first_obs_n_rv is not None:
+            if iedr is None:
+                raise ValueError(
+                    "e_first_obs_n_rv requires `iedr_rv` so the initial "
+                    "infection count can be converted from observed ED visits."
+                )
+            e_first_obs_n = self.e_first_obs_n_rv()
+            i0_first_obs_n = e_first_obs_n / iedr
+        elif self.h_first_obs_n_rv is not None:
+            if ihr is None:
+                raise ValueError(
+                    "h_first_obs_n_rv requires `ihr_rv` so the initial "
+                    "infection count can be converted from observed admissions."
+                )
+            h_first_obs_n = self.h_first_obs_n_rv()
+            i0_first_obs_n = h_first_obs_n / ihr
+        else:
+            raise ValueError(
+                "Must provide either `e_first_obs_n_rv` or `h_first_obs_n_rv`."
+            )
+
         eta_sd = self.eta_sd_rv()
         autoreg_rt = self.autoreg_rt_rv()
         log_r_mu_intercept = self.log_r_mu_intercept_rv()
@@ -429,7 +492,6 @@ class LatentInfectionProcess(RandomVariable):
         )
         generation_interval_pmf = self.generation_interval_pmf_rv()
 
-        i0_first_obs_n = self.i0_first_obs_n_rv()
         if self.n_subpops == 1:
             i_first_obs_over_n_subpop = i0_first_obs_n
             log_rtu_weekly_subpop = log_rtu_weekly[:, jnp.newaxis]
@@ -558,24 +620,17 @@ class LatentInfectionProcess(RandomVariable):
         numpyro.deterministic("rt", inf_with_susceptible_dep_sample.rt)
         numpyro.deterministic("latent_infections", latent_infections)
 
-        return latent_infections, latent_infections_subpop
+        return latent_infections, latent_infections_subpop, iedr, ihr
 
 
 class EDVisitObservationProcess(RandomVariable):
     def __init__(
         self,
-        p_ed_mean_rv: RandomVariable,
-        p_ed_w_sd_rv: RandomVariable,
-        autoreg_p_ed_rv: RandomVariable,
         ed_wday_effect_rv: RandomVariable,
         inf_to_ed_rv: RandomVariable,
         ed_neg_bin_concentration_rv: RandomVariable,
         ed_right_truncation_pmf_rv: RandomVariable,
     ) -> None:
-        self.p_ed_ar_proc = ARProcess("p_ed_ar")
-        self.p_ed_mean_rv = p_ed_mean_rv
-        self.p_ed_w_sd_rv = p_ed_w_sd_rv
-        self.autoreg_p_ed_rv = autoreg_p_ed_rv
         self.ed_wday_effect_rv = ed_wday_effect_rv
         self.inf_to_ed_rv = inf_to_ed_rv
         self.ed_right_truncation_cdf_rv = TransformedVariable(
@@ -593,6 +648,7 @@ class EDVisitObservationProcess(RandomVariable):
         data_observed: ArrayLike,
         model_t_observed: ArrayLike,
         model_t_first_latent_infection: int,
+        iedr: float,
         right_truncation_offset: int = None,
     ) -> tuple[ArrayLike]:
         """
@@ -616,39 +672,6 @@ class EDVisitObservationProcess(RandomVariable):
             ]
         else:
             which_obs_ed_visits = model_t_observed - model_t_first_latent_ed_visit
-
-        p_ed_mean = self.p_ed_mean_rv()
-        p_ed_w_sd = self.p_ed_w_sd_rv()
-        autoreg_p_ed = self.autoreg_p_ed_rv()
-        n_weeks_p_ed_ar = potential_latent_ed_visits.size // 7 + 1
-
-        p_ed_ar_init_rv = DistributionalVariable(
-            "p_ed_ar_init",
-            dist.Normal(
-                0,
-                p_ed_w_sd / jnp.sqrt(1 - jnp.pow(autoreg_p_ed, 2)),
-            ),
-        )
-        p_ed_ar_init = p_ed_ar_init_rv()
-
-        p_ed_ar = self.p_ed_ar_proc(
-            noise_name="p_ed",
-            n=n_weeks_p_ed_ar,
-            autoreg=autoreg_p_ed,
-            init_vals=p_ed_ar_init,
-            noise_sd=p_ed_w_sd,
-        )
-
-        iedr = jnp.repeat(
-            transformation.SigmoidTransform()(p_ed_ar + p_ed_mean),
-            repeats=7,
-        )[: potential_latent_ed_visits.size]  # indexed rel to first ed report day
-        # this is only applied after the ed visits are generated, not to all
-        # the latent infections. This is why we cannot apply the iedr in
-        # compute_delay_ascertained_incidence
-        # see https://github.com/CDCgov/ww-inference-model/issues/43
-
-        numpyro.deterministic("iedr", iedr)
 
         ed_wday_effect_raw = self.ed_wday_effect_rv()
         ed_wday_effect = tile_until_n(
@@ -686,7 +709,7 @@ class EDVisitObservationProcess(RandomVariable):
             obs=data_observed,
         )
 
-        return observed_ed_visits, iedr
+        return observed_ed_visits
 
 
 class HospAdmitObservationProcess(RandomVariable):
@@ -694,13 +717,9 @@ class HospAdmitObservationProcess(RandomVariable):
         self,
         inf_to_hosp_admit_rv: RandomVariable,
         hosp_admit_neg_bin_concentration_rv: RandomVariable,
-        ihr_rv: RandomVariable = None,
-        ihr_rel_iedr_rv: RandomVariable = None,
     ) -> None:
         self.inf_to_hosp_admit_rv = inf_to_hosp_admit_rv
         self.hosp_admit_neg_bin_concentration_rv = hosp_admit_neg_bin_concentration_rv
-        self.ihr_rv = ihr_rv
-        self.ihr_rel_iedr_rv = ihr_rel_iedr_rv
 
     def validate(self):
         pass
@@ -785,38 +804,13 @@ class HospAdmitObservationProcess(RandomVariable):
         model_t_first_latent_infection: int,
         data_observed: ArrayLike = None,
         model_t_observed: ArrayLike = None,
-        iedr: ArrayLike = None,
+        ihr: ArrayLike = None,
     ) -> ArrayLike:
         """
         Observe and/or predict incident hospital admissions.
         """
         inf_to_hosp_admit = self.inf_to_hosp_admit_rv()
 
-        if self.ihr_rel_iedr_rv is not None and self.ihr_rv is not None:
-            raise ValueError(
-                "IHR must either be specified "
-                "in absolute terms by a non-None "
-                "`ihr_rv` or specified relative "
-                "to the IEDR by a non-None "
-                "`ihr_rel_iedr_rv`, but not both. "
-                "Got non-None RVs for both "
-                "quantities"
-            )
-        elif self.ihr_rel_iedr_rv is not None:
-            if iedr is None:
-                raise ValueError(
-                    "Must pass in an IEDR to compute IHR relative to IEDR."
-                )
-            ihr = iedr[0] * self.ihr_rel_iedr_rv()
-            numpyro.deterministic("ihr", ihr)
-        elif self.ihr_rv is not None:
-            ihr = self.ihr_rv()
-        else:
-            raise ValueError(
-                "Must provide either an ihr_rv "
-                "or an ihr_rel_iedr_rv. "
-                "Got neither (both were None)."
-            )
         latent_hospital_admissions, hospital_admissions_offset = (
             compute_delay_ascertained_incidence(
                 p_observed_given_incident=1,
@@ -1110,7 +1104,12 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
         sample_wastewater: bool = False,
     ) -> dict[str, ArrayLike]:  # numpydoc ignore=GL08
         n_init_days = self.latent_infection_process_rv.n_initialization_points
-        latent_infections, latent_infections_subpop = self.latent_infection_process_rv(
+        (
+            latent_infections,
+            latent_infections_subpop,
+            iedr,
+            ihr,
+        ) = self.latent_infection_process_rv(
             n_days_post_init=data.n_days_post_init,
         )
         first_latent_infection_dow = (
@@ -1122,15 +1121,14 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
         site_level_observed_wastewater = None
         population_level_latent_wastewater = None
 
-        iedr = None
-
         if sample_ed_visits:
-            observed_ed_visits, iedr = self.ed_visit_obs_process_rv(
+            observed_ed_visits = self.ed_visit_obs_process_rv(
                 latent_infections=latent_infections,
                 population_size=self.population_size,
                 data_observed=data.data_observed_disease_ed_visits,
                 model_t_observed=data.model_t_obs_ed_visits,
                 model_t_first_latent_infection=-n_init_days,
+                iedr=iedr,
                 right_truncation_offset=data.right_truncation_offset,
             )
 
@@ -1142,7 +1140,7 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
                 model_t_first_latent_infection=-n_init_days,
                 data_observed=data.data_observed_disease_hospital_admissions,
                 model_t_observed=data.model_t_obs_hospital_admissions,
-                iedr=iedr,
+                ihr=ihr,
             )
         if sample_wastewater:
             (
