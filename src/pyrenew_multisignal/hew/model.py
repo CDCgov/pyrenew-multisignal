@@ -804,7 +804,7 @@ class HospAdmitObservationProcess(RandomVariable):
         model_t_first_latent_infection: int,
         data_observed: ArrayLike = None,
         model_t_observed: ArrayLike = None,
-        ihr: ArrayLike = None,
+        ihr: float = None,
     ) -> ArrayLike:
         """
         Observe and/or predict incident hospital admissions.
