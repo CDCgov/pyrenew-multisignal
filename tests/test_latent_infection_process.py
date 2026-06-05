@@ -55,14 +55,12 @@ def test_LatentInfectionProcess():
     )
 
     with numpyro.handlers.seed(rng_seed=223):
-        latent_inf_w_hierarchical_effects, _, iedr, _ = my_latent_infection_model(
+        latent_inf_w_hierarchical_effects, *_ = my_latent_infection_model(
             n_days_post_init=n_days_post_init
         )
 
-        e_first_obs_n = e_first_obs_n_rv()
-        i0_first_obs_n = e_first_obs_n / iedr
-
         # Calculate latent infections without hierarchical dynamics
+        i0_first_obs_n = e_first_obs_n_rv() / iedr_rv()
         i0 = InfectionInitializationProcess(
             "I0_initialization",
             DeterministicVariable("i0_first_obs_n", i0_first_obs_n),
