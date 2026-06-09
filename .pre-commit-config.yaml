@@ -13,14 +13,14 @@ repos:
 #####
 # Python
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.15.15
+  rev: v0.15.16
   hooks:
     # lint
     - id: ruff-check
     # format
     - id: ruff-format
 - repo: https://github.com/astral-sh/uv-pre-commit
-  rev: 0.11.17
+  rev: 0.11.19
   hooks:
     - id: uv-lock
 #####
