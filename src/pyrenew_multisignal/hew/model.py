@@ -368,11 +368,6 @@ class LatentInfectionProcess(RandomVariable):
         offset_ref_logit_i_first_obs_rv: RandomVariable = None,
         offset_ref_log_rt_rv: RandomVariable = None,
         n_newton_steps: int = 4,
-        iedr_rv: RandomVariable = None,
-        ihr_rv: RandomVariable = None,
-        ihr_rel_iedr_rv: RandomVariable = None,
-        e_first_obs_n_rv: RandomVariable = None,
-        h_first_obs_n_rv: RandomVariable = None,
     ) -> None:
         self.inf_with_susceptible_dep = InfectionsWithSusceptibleDepletion(
             "infections_with_susceptible_dep",
@@ -398,16 +393,11 @@ class LatentInfectionProcess(RandomVariable):
         self.pop_fraction = pop_fraction
         self.n_subpops = len(pop_fraction)
         self.n_newton_steps = n_newton_steps
-        self.iedr_rv = iedr_rv
-        self.ihr_rv = ihr_rv
-        self.ihr_rel_iedr_rv = ihr_rel_iedr_rv
-        self.e_first_obs_n_rv = e_first_obs_n_rv
-        self.h_first_obs_n_rv = h_first_obs_n_rv
 
     def validate(self):
         pass
 
-    def sample(self, n_days_post_init: int):
+    def sample(self, i0_first_obs_n, n_days_post_init: int):
         """
         Sample latent infections.
 
@@ -417,60 +407,6 @@ class LatentInfectionProcess(RandomVariable):
             Number of days of infections to sample, not including
             the initialization period.
         """
-
-        iedr = None
-        ihr = None
-
-        if self.iedr_rv is not None:
-            iedr = self.iedr_rv()
-            numpyro.deterministic("iedr", iedr)
-            if self.ihr_rv is not None:
-                raise ValueError(
-                    "When `iedr_rv` is provided, `ihr` must be specified "
-                    "relative to IEDR via `ihr_rel_iedr_rv`. "
-                )
-            if self.ihr_rel_iedr_rv is not None:
-                ihr = iedr * self.ihr_rel_iedr_rv()
-                numpyro.deterministic("ihr", ihr)
-        elif self.ihr_rv is not None:
-            if self.ihr_rel_iedr_rv is not None:
-                raise ValueError(
-                    "IHR must either be specified "
-                    "in absolute terms by a non-None "
-                    "`ihr_rv` or specified relative "
-                    "to the IEDR by a non-None "
-                    "`ihr_rel_iedr_rv`, but not both. "
-                    "Got non-None RVs for both "
-                    "quantities"
-                )
-            ihr = self.ihr_rv()
-            numpyro.deterministic("ihr", ihr)
-        else:
-            raise ValueError(
-                "Must provide at least one of `iedr_rv` or `ihr_rv`. "
-                "Got neither (both were None)."
-            )
-
-        if self.e_first_obs_n_rv is not None:
-            if iedr is None:
-                raise ValueError(
-                    "e_first_obs_n_rv requires `iedr_rv` so the initial "
-                    "infection count can be converted from observed ED visits."
-                )
-            e_first_obs_n = self.e_first_obs_n_rv()
-            i0_first_obs_n = e_first_obs_n / iedr
-        elif self.h_first_obs_n_rv is not None:
-            if ihr is None:
-                raise ValueError(
-                    "h_first_obs_n_rv requires `ihr_rv` so the initial "
-                    "infection count can be converted from observed admissions."
-                )
-            h_first_obs_n = self.h_first_obs_n_rv()
-            i0_first_obs_n = h_first_obs_n / ihr
-        else:
-            raise ValueError(
-                "Must provide either `e_first_obs_n_rv` or `h_first_obs_n_rv`."
-            )
 
         eta_sd = self.eta_sd_rv()
         autoreg_rt = self.autoreg_rt_rv()
@@ -620,7 +556,7 @@ class LatentInfectionProcess(RandomVariable):
         numpyro.deterministic("rt", inf_with_susceptible_dep_sample.rt)
         numpyro.deterministic("latent_infections", latent_infections)
 
-        return latent_infections, latent_infections_subpop, iedr, ihr
+        return latent_infections, latent_infections_subpop
 
 
 class EDVisitObservationProcess(RandomVariable):
@@ -1086,15 +1022,75 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
         ed_visit_obs_process_rv: EDVisitObservationProcess,
         hosp_admit_obs_process_rv: HospAdmitObservationProcess,
         wastewater_obs_process_rv: WastewaterObservationProcess,
+        iedr_rv: RandomVariable = None,
+        ihr_rv: RandomVariable = None,
+        ihr_rel_iedr_rv: RandomVariable = None,
+        e_first_obs_n_rv: RandomVariable = None,
+        h_first_obs_n_rv: RandomVariable = None,
     ) -> None:  # numpydoc ignore=GL08
         self.population_size = population_size
         self.latent_infection_process_rv = latent_infection_process_rv
         self.ed_visit_obs_process_rv = ed_visit_obs_process_rv
         self.hosp_admit_obs_process_rv = hosp_admit_obs_process_rv
         self.wastewater_obs_process_rv = wastewater_obs_process_rv
+        self.iedr_rv = iedr_rv
+        self.ihr_rv = ihr_rv
+        self.ihr_rel_iedr_rv = ihr_rel_iedr_rv
+        self.e_first_obs_n_rv = e_first_obs_n_rv
+        self.h_first_obs_n_rv = h_first_obs_n_rv
 
     def validate(self) -> None:  # numpydoc ignore=GL08
         pass
+
+    def get_initial_infections(
+        self,
+    ) -> tuple:
+        iedr = None
+        ihr = None
+
+        if self.iedr_rv is not None:
+            iedr = self.iedr_rv()
+            numpyro.deterministic("iedr", iedr)
+
+            if self.ihr_rv is not None:
+                raise ValueError(
+                    "When `iedr_rv` is provided, `ihr` must be specified "
+                    "relative to IEDR via `ihr_rel_iedr_rv`."
+                )
+
+            if self.e_first_obs_n_rv is not None:
+                i0_first_obs_n = self.e_first_obs_n_rv() / iedr
+            else:
+                raise ValueError(
+                    "`iedr_rv` requires `e_first_obs_n_rv` to initialize "
+                    "latent infections."
+                )
+
+            if self.ihr_rel_iedr_rv is not None:
+                ihr = iedr * self.ihr_rel_iedr_rv()
+                numpyro.deterministic("ihr", ihr)
+        elif self.ihr_rv is not None:
+            if self.ihr_rel_iedr_rv is not None:
+                raise ValueError(
+                    "IHR must either be specified in absolute terms by a "
+                    "non-None `ihr_rv` or specified relative to the IEDR by "
+                    "a non-None `ihr_rel_iedr_rv`, but not both."
+                )
+
+            ihr = self.ihr_rv()
+            numpyro.deterministic("ihr", ihr)
+
+            if self.h_first_obs_n_rv is not None:
+                i0_first_obs_n = self.h_first_obs_n_rv() / ihr
+            else:
+                raise ValueError(
+                    "`ihr_rv` requires `h_first_obs_n_rv` to initialize "
+                    "latent infections."
+                )
+        else:
+            raise ValueError("Must provide at least one of `iedr_rv` or `ihr_rv`.")
+
+        return i0_first_obs_n, iedr, ihr
 
     def sample(
         self,
@@ -1104,12 +1100,13 @@ class PyrenewHEWModel(Model):  # numpydoc ignore=GL08
         sample_wastewater: bool = False,
     ) -> dict[str, ArrayLike]:  # numpydoc ignore=GL08
         n_init_days = self.latent_infection_process_rv.n_initialization_points
+        i0_first_obs_n, iedr, ihr = self.get_initial_infections()
+
         (
             latent_infections,
             latent_infections_subpop,
-            iedr,
-            ihr,
         ) = self.latent_infection_process_rv(
+            i0_first_obs_n=i0_first_obs_n,
             n_days_post_init=data.n_days_post_init,
         )
         first_latent_infection_dow = (
