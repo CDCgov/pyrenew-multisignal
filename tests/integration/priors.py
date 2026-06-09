@@ -3,9 +3,14 @@ import numpyro.distributions as dist
 import pyrenew.transformation as transformation
 from pyrenew.randomvariable import DistributionalVariable, TransformedVariable
 
-i0_first_obs_n_rv = DistributionalVariable(
-    "i0_first_obs_n_rv",
-    dist.Beta(1, 10),
+e_first_obs_n_rv = DistributionalVariable(
+    "e_first_obs_n_rv",
+    dist.Beta(1, 1000),
+)
+
+h_first_obs_n_rv = DistributionalVariable(
+    "h_first_obs_n_rv",
+    dist.Beta(1, 1000),
 )
 
 s0_rv = DistributionalVariable(
@@ -40,14 +45,18 @@ delay_log_offset_scale_rv = DistributionalVariable(
     "delay_log_offset_scale", dist.Normal(0, 0.5)
 )
 
-# low confidence logit-Normal
-p_ed_visit_mean_rv = DistributionalVariable(
-    "p_ed_visit_mean",
-    dist.Normal(
-        transformation.SigmoidTransform().inv(0.005),
-        0.3,
+iedr_rv = TransformedVariable(
+    "iedr",
+    DistributionalVariable(
+        "logit_iedr",
+        dist.Normal(
+            transformation.SigmoidTransform().inv(0.005),
+            0.3,
+        ),
     ),
-)  # logit scale
+    transforms=transformation.SigmoidTransform(),
+)
+
 
 # low confidence logit-Normal with same mode as IEDR
 ihr_rv = TransformedVariable(
@@ -60,16 +69,6 @@ ihr_rv = TransformedVariable(
         ),
     ),
     transforms=transformation.SigmoidTransform(),
-)
-
-
-p_ed_visit_w_sd_rv = DistributionalVariable(
-    "p_ed_visit_w_sd_sd", dist.TruncatedNormal(0, 0.01, low=0)
-)
-
-
-autoreg_p_ed_visit_rv = DistributionalVariable(
-    "autoreg_p_ed_visit_rv", dist.Beta(1, 100)
 )
 
 ed_visit_wday_effect_rv = TransformedVariable(
