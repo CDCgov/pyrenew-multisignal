@@ -13,17 +13,15 @@ from pyrenew.randomvariable import DistributionalVariable
 
 from pyrenew_multisignal.hew import (
     InfectionsWithSusceptibleDepletion,
-    LatentInfectionProcess,
 )
 
 
-def test_LatentInfectionProcess():
+def test_LatentInfectionProcess(latent_infection_process):
     """
     Tests when there is a single sub-population,
     the hierarchical construct and manual construction
     without the hierarchical component are equivalent.
     """
-    i0_first_obs_n_rv = DeterministicVariable("i0_first_obs_n_rv", 1e-6)
     s0_rv = DeterministicVariable("s0", 1.0)
     log_r_mu_intercept_rv = DeterministicVariable("log_r_mu_intercept", 0.08)
     eta_sd_rv = DeterministicVariable("eta_sd", 0)
@@ -41,26 +39,19 @@ def test_LatentInfectionProcess():
     )
     n_initialization_points = 10
     n_days_post_init = 14
+    i0_first_obs_n = 1e-5
 
-    my_latent_infection_model = LatentInfectionProcess(
-        i0_first_obs_n_rv=i0_first_obs_n_rv,
-        s0_rv=s0_rv,
-        log_r_mu_intercept_rv=log_r_mu_intercept_rv,
-        autoreg_rt_rv=autoreg_rt_rv,
-        eta_sd_rv=eta_sd_rv,  # sd of random walk for ar process,
-        generation_interval_pmf_rv=generation_interval_pmf_rv,
-        n_initialization_points=n_initialization_points,
-    )
+    my_latent_infection_model = latent_infection_process
 
     with numpyro.handlers.seed(rng_seed=223):
-        latent_inf_w_hierarchical_effects, _ = my_latent_infection_model(
-            n_days_post_init=n_days_post_init
+        latent_inf_w_hierarchical_effects, *_ = my_latent_infection_model(
+            i0_first_obs_n=i0_first_obs_n, n_days_post_init=n_days_post_init
         )
 
         # Calculate latent infections without hierarchical dynamics
         i0 = InfectionInitializationProcess(
             "I0_initialization",
-            i0_first_obs_n_rv,
+            DeterministicVariable("i0_first_obs_n", i0_first_obs_n),
             InitializeInfectionsExponentialGrowth(
                 n_initialization_points, initialization_rate_rv, t_pre_init=0
             ),

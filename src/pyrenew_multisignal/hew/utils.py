@@ -384,8 +384,15 @@ def build_pyrenew_hew_model(
         - 1
     )
 
+    iedr_rv = priors["iedr_rv"] if fit_ed_visits else None
+    ihr_rel_iedr_rv = priors["ihr_rel_iedr_rv"] if he else None
+    e_first_obs_n_rv = priors["e_first_obs_n_rv"] if fit_ed_visits else None
+    ihr_rv = priors["ihr_rv"] if fit_hospital_admissions and not he else None
+    h_first_obs_n_rv = (
+        priors["h_first_obs_n_rv"] if fit_hospital_admissions and not he else None
+    )
+
     latent_infections_rv = LatentInfectionProcess(
-        i0_first_obs_n_rv=priors["i0_first_obs_n_rv"],
         s0_rv=priors["s0_rv"],
         log_r_mu_intercept_rv=priors["log_r_mu_intercept_rv"],
         autoreg_rt_rv=priors["autoreg_rt_rv"],
@@ -401,9 +408,6 @@ def build_pyrenew_hew_model(
     )
 
     ed_visit_obs_rv = EDVisitObservationProcess(
-        p_ed_mean_rv=priors["p_ed_visit_mean_rv"],
-        p_ed_w_sd_rv=priors["p_ed_visit_w_sd_rv"],
-        autoreg_p_ed_rv=priors["autoreg_p_ed_visit_rv"],
         ed_wday_effect_rv=priors["ed_visit_wday_effect_rv"],
         inf_to_ed_rv=inf_to_ed_rv,
         ed_neg_bin_concentration_rv=(priors["ed_neg_bin_concentration_rv"]),
@@ -415,8 +419,6 @@ def build_pyrenew_hew_model(
         hosp_admit_neg_bin_concentration_rv=(
             priors["hosp_admit_neg_bin_concentration_rv"]
         ),
-        ihr_rel_iedr_rv=priors["ihr_rel_iedr_rv"] if he else None,
-        ihr_rv=None if he else priors["ihr_rv"],
     )
 
     wastewater_obs_rv = WastewaterObservationProcess(
@@ -437,6 +439,11 @@ def build_pyrenew_hew_model(
         ed_visit_obs_process_rv=ed_visit_obs_rv,
         hosp_admit_obs_process_rv=hosp_admit_obs_rv,
         wastewater_obs_process_rv=wastewater_obs_rv,
+        iedr_rv=iedr_rv,
+        ihr_rv=ihr_rv,
+        ihr_rel_iedr_rv=ihr_rel_iedr_rv,
+        e_first_obs_n_rv=e_first_obs_n_rv,
+        h_first_obs_n_rv=h_first_obs_n_rv,
     )
 
     return mod
