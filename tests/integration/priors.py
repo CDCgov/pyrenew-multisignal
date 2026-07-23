@@ -8,11 +8,6 @@ i0_first_obs_n_rv = DistributionalVariable(
     dist.Beta(1, 10),
 )
 
-s0_rv = DistributionalVariable(
-    "s0_rv",
-    dist.Beta(2, 2),
-)
-
 r_logmean = jnp.log(1.2)
 r_logsd = jnp.log(jnp.sqrt(2))
 

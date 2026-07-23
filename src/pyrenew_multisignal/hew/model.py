@@ -158,7 +158,7 @@ class InfectionsWithSusceptibleDepletion(RandomVariable):
     I(t) & = S(t) \left( 1 - \exp\left(\frac{- \mathcal{R}(t) \lambda(t)}{S(t)} \right) \right)
 
     \lambda(t) & = \sum_{\tau=1}^{T_g}I(t - \tau)g(\tau)
-    S(t) & = \max\left(1, S_0 - \sum_{\tau=1}^{t-1} I(\tau)\right)
+    S(t) & = \max\left(0, S_0 - \sum_{\tau=1}^{t-1} I(\tau)\right)
     ```
 
     where $\mathcal{R}(t)$ is the reproductive number, $g(t)$
@@ -235,7 +235,7 @@ class InfectionsWithSusceptibleDepletion(RandomVariable):
         I(t) & = S(t) \left( 1 - \exp\left(\frac{- \mathcal{R}(t) \lambda(t)}{S(t)} \right) \right)
 
         \lambda(t) & = \sum_{\tau=1}^{T_g}I(t - \tau)g(\tau)
-        S(t) & = \max\left(1, S_0 - \sum_{\tau=1}^{t-1} I(\tau)\right)
+        S(t) & = \max\left(0, S_0 - \sum_{\tau=1}^{t-1} I(\tau)\right)
         ```
 
         where $\mathcal{R}(t)$ is the reproductive number, $g(t)$
@@ -330,13 +330,6 @@ class InfectionsWithSusceptibleDepletion(RandomVariable):
                 "population must match Rt batch shape exactly. "
                 f"Got population shape {jnp.shape(population)} and "
                 f"Rt batch shape {Rt.shape[1:]}."
-            )
-
-        if jnp.any(S0 > population):
-            raise ValueError(
-                "Susceptible cannot be greater than population. "
-                f"Got initial susceptible {S0} and "
-                f"population {population}."
             )
 
         gen_int_rev = jnp.flip(gen_int)
