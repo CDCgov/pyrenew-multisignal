@@ -741,7 +741,7 @@ wheels = [
 [[package]]
 name = "pyrenew"
 version = "0.1.7"
-source = { git = "https://github.com/CDCgov/PyRenew?rev=9b85d46#9b85d4661e0ca564e5d6ce2450a3e52dd6670f06" }
+source = { git = "https://github.com/CDCgov/PyRenew?rev=v0.1.7#ef83fbb7f65d1131fd1f37935ce655a1268c8edf" }
 dependencies = [
     { name = "jax" },
     { name = "numpy" },
@@ -782,7 +782,7 @@ requires-dist = [
     { name = "numpy" },
     { name = "numpyro" },
     { name = "polars", specifier = ">=1.36" },
-    { name = "pyrenew", git = "https://github.com/CDCgov/PyRenew?rev=9b85d46" },
+    { name = "pyrenew", git = "https://github.com/CDCgov/PyRenew?rev=v0.1.7" },
     { name = "scipy" },
 ]
 
