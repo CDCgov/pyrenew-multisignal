@@ -40,6 +40,7 @@ NUM_SAMPLES = 500
 NUM_CHAINS = 2
 COVERAGE_THRESHOLD = 0.80
 MCMC_SEED = 123
+FORECAST_DAYS = 14
 
 
 def _build_nssp_data() -> pl.DataFrame:
@@ -126,9 +127,23 @@ def fitted_model(training_data):
 
 
 @pytest.fixture(scope="module")
-def idata(fitted_model):
+def forecast_data(training_data) -> PyrenewHEWData:
+    return training_data.to_forecast_data(n_forecast_points=FORECAST_DAYS)
+
+
+@pytest.fixture(scope="module")
+def idata(fitted_model, forecast_data):
     """Convert fitted MCMC to ArviZ InferenceData."""
-    return az.from_numpyro(fitted_model.mcmc)
+    posterior_predictive_samples = fitted_model.posterior_predictive(
+        rng_key=jr.key(MCMC_SEED + 1),
+        data=forecast_data,
+        sample_hospital_admissions=True,
+        sample_ed_visits=True,
+    )
+    return az.from_numpyro(
+        fitted_model.mcmc,
+        posterior_predictive=posterior_predictive_samples,
+    )
 
 
 @pytest.fixture(scope="module")
@@ -150,4 +165,60 @@ def test_rt_posterior_covers_truth(idata, true_rt):
 
     assert coverage >= COVERAGE_THRESHOLD, (
         f"R(t) 90% CI coverage was {coverage:.1%}, expected >= {COVERAGE_THRESHOLD:.1%}"
+    )
+
+
+@pytest.mark.integration
+def test_hospital_admissions_posterior_coverage(training_data, forecast_data, idata):
+    """Check that 90% posterior predictive CI covers observed hospital
+    admissions for at least 80% of weeks."""
+    predicted = idata.posterior_predictive["observed_hospital_admissions"]
+    obs = idata.observed_data["observed_hospital_admissions"].values
+
+    q05 = predicted.quantile(0.05, dim=["chain", "draw"]).values
+    q95 = predicted.quantile(0.95, dim=["chain", "draw"]).values
+
+    offset = (
+        int(
+            (
+                training_data.first_hospital_admissions_date
+                - forecast_data.first_hospital_admissions_date
+            )
+            / np.timedelta64(1, "D")
+        )
+        // 7
+    )
+    covered = (obs >= q05[offset : offset + len(obs)]) & (
+        obs <= q95[offset : offset + len(obs)]
+    )
+    coverage = float(np.mean(covered))
+
+    assert coverage >= COVERAGE_THRESHOLD, (
+        f"Hospital admissions 90% CI coverage was {coverage:.1%}, "
+        f"expected >= {COVERAGE_THRESHOLD:.1%}"
+    )
+
+
+@pytest.mark.integration
+def test_ed_visits_posterior_coverage(training_data, forecast_data, idata):
+    """Check that 90% posterior predictive CI covers observed ED visits
+    for at least 80% of days."""
+    predicted = idata.posterior_predictive["observed_ed_visits"]
+    obs = idata.observed_data["observed_ed_visits"].values
+
+    q05 = predicted.quantile(0.05, dim=["chain", "draw"]).values
+    q95 = predicted.quantile(0.95, dim=["chain", "draw"]).values
+
+    offset = int(
+        (training_data.first_ed_visits_date - forecast_data.first_ed_visits_date)
+        / np.timedelta64(1, "D")
+    )
+    covered = (obs >= q05[offset : offset + len(obs)]) & (
+        obs <= q95[offset : offset + len(obs)]
+    )
+    coverage = float(np.mean(covered))
+
+    assert coverage >= COVERAGE_THRESHOLD, (
+        f"ED visits 90% CI coverage was {coverage:.1%}, "
+        f"expected >= {COVERAGE_THRESHOLD:.1%}"
     )
