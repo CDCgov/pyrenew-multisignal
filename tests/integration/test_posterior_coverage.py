@@ -5,7 +5,6 @@ Uses pyrenew.datasets synthetic data (120-day CA COVID-19 trajectory) with
 known ground-truth parameters. Fits  Pyrenew-HE model and checks
 90% posterior CI covers the true R(t) for >= 80% of time points
 
-Run with: pytest tests/integration/test_pyrenew_he_convergence_param_recovery.py -m integration
 """
 
 import runpy
