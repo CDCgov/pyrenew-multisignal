@@ -46,4 +46,4 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.uv.sources]
-pyrenew = { git = "https://github.com/CDCgov/PyRenew", rev = "sb-bundle-data"}
+pyrenew = { git = "https://github.com/CDCgov/PyRenew", rev = "69b92d6"}
