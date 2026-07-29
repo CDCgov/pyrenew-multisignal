@@ -72,10 +72,6 @@ jobs:
       - name: Install the project
         run: uv sync --all-extras
 
-      - name: Check pyrenew version and datasets
-        run: |
-          ls .venv/lib/python3.13/site-packages/pyrenew/datasets/synthetic_CA_126
-
       - name: Run integration tests
         env:
           XLA_FLAGS: --xla_force_host_platform_device_count=2
