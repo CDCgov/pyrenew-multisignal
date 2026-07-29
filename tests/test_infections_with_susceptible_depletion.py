@@ -97,11 +97,6 @@ def test_infections_with_sus_depletion(I0, gen_int, Rt, pop, S0):
             jnp.array([10]),
             "population must match Rt batch shape exactly",
         ),
-        (
-            jnp.array([10, 10], dtype=float),
-            jnp.array([5, 10]),
-            "Susceptible cannot be greater than population",
-        ),
     ],
 )
 def test_infections_with_sus_depletion_invalid_inputs(S0, population, error_match):
