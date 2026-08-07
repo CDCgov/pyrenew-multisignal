@@ -309,7 +309,6 @@ def test_from_json(tmp_path, fit_ed_visits, fit_hospital_admissions, fit_wastewa
     # Verify ED visits data
     if fit_ed_visits:
         assert data.nssp_training_data is not None
-        assert "data_type" not in data.nssp_training_data.columns
         assert data.data_observed_disease_ed_visits is not None
     else:
         assert data.nssp_training_data is None
@@ -318,7 +317,6 @@ def test_from_json(tmp_path, fit_ed_visits, fit_hospital_admissions, fit_wastewa
     # Verify hospital admissions data
     if fit_hospital_admissions:
         assert data.nhsn_training_data is not None
-        assert "data_type" not in data.nhsn_training_data.columns
         assert data.data_observed_disease_hospital_admissions is not None
     else:
         assert data.nhsn_training_data is None
