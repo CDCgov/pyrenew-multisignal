@@ -98,7 +98,6 @@ class PyrenewHEWData:
                     "geo_value": pl.String,
                     "observed_ed_visits": pl.Float64,
                     "other_ed_visits": pl.Float64,
-                    "data_type": pl.String,
                 },
             )
             if fit_ed_visits
@@ -111,7 +110,6 @@ class PyrenewHEWData:
                     "weekendingdate": pl.Date,
                     "jurisdiction": pl.String,
                     "hospital_admissions": pl.Float64,
-                    "data_type": pl.String,
                 },
             )
             if fit_hospital_admissions
